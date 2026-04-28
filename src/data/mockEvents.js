@@ -10,7 +10,7 @@ export const events = [
     category: 'Cultural',
     description: 'Join us for an inspiring afternoon of ideas worth spreading. TEDx Maharani College brings together thought leaders, innovators, and changemakers from across Rajasthan. This year\'s theme: "Breaking Boundaries" — featuring 8 speakers, live performances, and networking.',
     speakers: [
-      { img: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&q=80', name: 'Dr. Priya Sharma' },
+      { img: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&q=80', name: 'Dr. Pooja Sharma' },
       { img: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&q=80', name: 'Rohit Verma' },
       { img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&q=80', name: 'Anita Joshi' },
     ]

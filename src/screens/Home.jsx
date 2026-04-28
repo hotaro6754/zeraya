@@ -45,7 +45,7 @@ export default function Home() {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <p className="body-sm" style={{ color: 'var(--text-tertiary)' }}>Good evening,</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <h1 className="hero" style={{ marginTop: 2 }}>Priya ✦</h1>
+            <h1 className="hero" style={{ marginTop: 2 }}>Pooja ✦</h1>
           </div>
         </motion.div>
         <div style={{ display: 'flex', gap: 12 }}>
