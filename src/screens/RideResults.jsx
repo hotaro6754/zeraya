@@ -18,9 +18,6 @@ function getDistance(lat1, lon1, lat2, lon2) {
   return R * c; 
 }
 
-// Abstract3DMap removed to use AnimatedMap
-const distanceCache = new Map()
-
 export default function RideResults() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -32,41 +29,18 @@ export default function RideResults() {
   const [isLoading, setIsLoading] = useState(true)
   const [filter, setFilter] = useState('All') // All, Bikes, Autos, Cabs
 
-  const [distance, setDistance] = useState(0)
-
   useEffect(() => {
-    const fetchDistance = async () => {
-      const cacheKey = `${from.lng},${from.lat};${to.lng},${to.lat}`
-      if (distanceCache.has(cacheKey)) {
-        setDistance(distanceCache.get(cacheKey))
-        setIsLoading(false)
-        return
-      }
-
-      try {
-        const response = await fetch(
-          `https://router.project-osrm.org/route/v1/driving/${cacheKey}?overview=false`
-        )
-        const data = await response.json()
-        if (data.routes && data.routes.length > 0) {
-          const dist = data.routes[0].distance / 1000
-          setDistance(dist)
-          distanceCache.set(cacheKey, dist)
-        }
-      } catch (error) {
-        console.warn('OSRM error, using haversine fallback', error)
-        const fallbackDist = getDistance(from.lat, from.lng, to.lat, to.lng) * 1.2
-        setDistance(fallbackDist)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    fetchDistance()
-  }, [from, to])
+    // Simulate complex scraping
+    const timer = setTimeout(() => {
+      setIsLoading(false)
+    }, 2500)
+    return () => clearTimeout(timer)
+  }, [])
 
   // Full Spectrum Pricing Engine
   const rideData = useMemo(() => {
-    if (!distance) return { distanceStr: '0.0', context: 'Calculating...', rides: [] }
+    const straightLine = getDistance(from.lat, from.lng, to.lat, to.lng);
+    const distance = Math.max(1.2, straightLine * 1.3); // Driving dist
     
     const now = new Date();
     const hours = now.getHours();
@@ -85,7 +59,7 @@ export default function RideResults() {
 
     return {
       distanceStr: distance.toFixed(1),
-      context: isNight ? "Night Surge (Jaipur)" : (isTraffic ? "Peak Traffic (Jaipur)" : "Standard Fares"),
+      context: isNight ? "Night Surge" : (isTraffic ? "Peak Traffic" : "Standard Fares"),
       rides: [
         // BIKES
         { id: 'r_bike', platform: 'Rapido', name: 'Bike', type: 'Bikes', icon: '🏍️', color: '#F59E0B', price: Math.round((15 + (distance * 6)) * rapidoMult), time: calcTime(2.5), eta: '3 min', link: 'rapido://' },
