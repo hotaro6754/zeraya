@@ -1,7 +1,10 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Laptop, Music, Trophy, Palette, Pizza, Plane, Book, Dumbbell, Film, Gamepad2, Camera, Code, Mic, Rocket, Shirt, Check } from 'lucide-react'
+
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
+import { ArrowRight, Laptop, Music, Trophy, Palette, Pizza, Plane, Book, Dumbbell, Film, Gamepad2, Camera, Code, Mic, Rocket, Shirt } from 'lucide-react';
 
 const ALL_INTERESTS = [
   { id: 'tech', label: 'Technology', icon: Laptop },
@@ -19,97 +22,91 @@ const ALL_INTERESTS = [
   { id: 'dance', label: 'Dance', icon: Mic },
   { id: 'startups', label: 'Startups', icon: Rocket },
   { id: 'fashion', label: 'Fashion', icon: Shirt },
-]
+];
 
 export default function Interests() {
-  const navigate = useNavigate()
-  const [selected, setSelected] = useState([])
+  const navigate = useNavigate();
+  const [selected, setSelected] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const toggle = (id) => {
-    setSelected(prev => 
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    )
-  }
+  const toggleInterest = (id) => {
+    setSelected(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
 
-  const isValid = selected.length >= 3
+  const handleContinue = async () => {
+    if (selected.length < 3) {
+      alert('Please select at least 3 interests.');
+      return;
+    }
+
+    const user = auth.currentUser;
+    if (!user) {
+      alert('You are not logged in!');
+      navigate('/auth');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const userDocRef = doc(db, 'users', user.uid);
+      await setDoc(userDocRef, {
+        interests: selected,
+        onboardingComplete: true, // <-- set onboarding to true
+      }, { merge: true });
+
+      navigate('/location'); // <-- navigate to location screen
+    } catch (error) {
+      console.error("Error saving interests: ", error);
+      alert('Failed to save your interests. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="page-no-nav" style={{ paddingTop: 40 }}>
-      <div style={{ marginBottom: 32 }}>
-        <p className="overline" style={{ marginBottom: 8, color: 'var(--accent-secondary)' }}>STEP 1 OF 2</p>
-        <h1 className="h1" style={{ marginBottom: 8 }}>What are you into?</h1>
-        <p className="body-lg">Pick at least 3. This tailors your feed.</p>
-      </div>
-
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
-        gap: 12,
-        flex: 1,
-        alignContent: 'start'
-      }}>
-        {ALL_INTERESTS.map((int, i) => {
-          const isSelected = selected.includes(int.id)
-          return (
-            <motion.div
-              key={int.id}
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: i * 0.03, ease: [0.16, 1, 0.3, 1] }}
-              onClick={() => toggle(int.id)}
-              className="card-interactive"
-              style={{
-                position: 'relative',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 10,
-                padding: '16px 8px',
-                borderRadius: 'var(--radius-lg)',
-                backgroundColor: isSelected ? 'var(--accent-primary)' : 'var(--bg-surface)',
-                border: `1px solid ${isSelected ? 'var(--accent-primary)' : 'var(--border-subtle)'}`,
-                boxShadow: isSelected ? 'var(--shadow-md)' : 'none',
-                color: isSelected ? 'var(--text-inverse)' : 'var(--text-secondary)',
-                transition: 'all 0.2s var(--transition-spring)'
-              }}
-            >
-              <int.icon size={24} color={isSelected ? 'var(--text-inverse)' : 'var(--text-primary)'} />
-              <span style={{ fontSize: 13, fontWeight: 500, textAlign: 'center' }}>{int.label}</span>
-              
-              {isSelected && (
-                <div style={{
-                  position: 'absolute', top: 6, right: 6,
-                  width: 16, height: 16, borderRadius: '50%',
-                  backgroundColor: 'var(--bg-background)', display: 'flex',
-                  alignItems: 'center', justifyContent: 'center'
-                }}>
-                  <Check size={10} color="var(--accent-primary)" />
-                </div>
-              )}
-            </motion.div>
-          )
-        })}
-      </div>
-
+    <div className="page" style={{ justifyContent: 'center', padding: '0 24px' }}>
       <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.5 }}
-        style={{ marginTop: 24, paddingTop: 16 }}
+        key="interests"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        style={{ width: '100%' }}
       >
-        <button
-          className={`btn btn-full btn-lg ${isValid ? 'btn-primary' : 'btn-secondary'}`}
-          disabled={!isValid}
-          onClick={() => navigate('/location')}
-          style={{ 
-            opacity: isValid ? 1 : 0.5, 
-            cursor: isValid ? 'pointer' : 'not-allowed'
-          }}
-        >
-          {isValid ? 'Continue' : `Select ${3 - selected.length} more`}
-        </button>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <h1 className="hero" style={{ fontSize: 32, marginBottom: 8 }}>What are you into?</h1>
+          <p className="caption">Choose 3 or more interests to personalize your experience.</p>
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 12, marginBottom: 24 }}>
+          {ALL_INTERESTS.map((interest, i) => (
+            <motion.div
+              key={interest.id}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.1 + (i * 0.03) }}
+              onClick={() => toggleInterest(interest.id)}
+              className={`chip-selectable ${selected.includes(interest.id) ? 'active' : ''}`}
+            >
+              <interest.icon size={16} style={{ marginRight: 8 }} />
+              {interest.label}
+            </motion.div>
+          ))}
+        </div>
+
+        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }}>
+          <button
+            className="btn-primary"
+            style={{ height: 56, width: '100%', marginTop: 24 }}
+            onClick={handleContinue}
+            disabled={loading || selected.length < 3}
+          >
+            {loading ? 'Saving...' : 'Continue'}
+            {!loading && <ArrowRight size={20} style={{ marginLeft: 8 }} />} 
+          </button>
+        </motion.div>
       </motion.div>
-    </motion.div>
-  )
+    </div>
+  );
 }

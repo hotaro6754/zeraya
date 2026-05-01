@@ -1,9 +1,27 @@
-import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { MapPin, ShieldCheck } from 'lucide-react'
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { MapPin, ShieldCheck } from 'lucide-react';
+import { auth, db } from '../lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 export default function LocationPerm() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+
+  const handleLocationPreference = async (preference) => {
+    const user = auth.currentUser;
+    if (user) {
+      try {
+        const userDocRef = doc(db, 'users', user.uid);
+        await setDoc(userDocRef, {
+          locationPermission: preference,
+        }, { merge: true });
+      } catch (error) {
+        console.error("Error saving location preference: ", error);
+        // Still navigate, don't block the user.
+      }
+    }
+    navigate('/home');
+  };
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="page-no-nav" style={{ paddingTop: 60, alignItems: 'center', textAlign: 'center' }}>
@@ -40,14 +58,14 @@ export default function LocationPerm() {
       </motion.div>
 
       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <button className="btn btn-primary btn-full btn-lg" onClick={() => navigate('/home')}>
+        <button className="btn btn-primary btn-full btn-lg" onClick={() => handleLocationPreference('granted')}>
           Allow Location Access
         </button>
-        <button className="btn btn-ghost btn-full" onClick={() => navigate('/home')}>
+        <button className="btn btn-ghost btn-full" onClick={() => handleLocationPreference('denied')}>
           Maybe later
         </button>
       </motion.div>
 
     </motion.div>
-  )
+  );
 }

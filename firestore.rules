@@ -1,0 +1,55 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions to check user roles from custom claims
+    function isAdmin() {
+      return request.auth.token.role == 'admin';
+    }
+
+    function isUser() {
+      return request.auth.token.role == 'user';
+    }
+
+    // Rules for the 'posts' collection
+    match /posts/{postId} {
+      // Admins can do anything
+      allow read, write: if isAdmin();
+
+      // Users can read all posts
+      allow get, list: if isUser();
+
+      // Users can create posts if they are logged in
+      allow create: if isUser() && request.auth.uid == request.resource.data.authorId;
+
+      // Users can only update or delete their own posts
+      allow update, delete: if isUser() && resource.data.authorId == request.auth.uid;
+    }
+
+    // Rules for the 'stories' collection
+    match /stories/{storyId} {
+      // Admins can do anything
+      allow read, write: if isAdmin();
+
+      // Users can read all stories
+      allow get, list: if isUser();
+
+      // Users can create stories if they are logged in
+      allow create: if isUser() && request.auth.uid == request.resource.data.authorId;
+
+      // Users can only update or delete their own stories
+      allow update, delete: if isUser() && resource.data.authorId == request.auth.uid;
+    }
+
+    // Rules for the 'users' collection
+    match /users/{userId} {
+      // Admins can read and write all user documents.
+      allow read, write: if isAdmin();
+
+      // Users can create, read (get), and update their own user document.
+      // They cannot list all users, nor can they modify other users' documents.
+      allow create, get, update: if isUser() && request.auth.uid == userId;
+    }
+  }
+}

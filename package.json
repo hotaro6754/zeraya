@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "seed": "node functions/seed.js"
   },
   "devDependencies": {
     "autoprefixer": "^10.5.0",
@@ -16,7 +17,6 @@
     "vite": "^8.0.9"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.104.0",
     "@turf/turf": "^7.3.5",
     "clsx": "^2.1.1",
     "framer-motion": "^12.38.0",

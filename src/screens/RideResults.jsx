@@ -1,99 +1,47 @@
-import { useEffect, useState, useMemo } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Clock, Shield, ExternalLink } from 'lucide-react'
-import MathCurveLoader from '../components/MathCurveLoader'
-import AnimatedMap from '../components/AnimatedMap'
-
-// Distance Math
-function getDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371; 
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2); 
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-  return R * c; 
-}
+import { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Clock, Shield, ExternalLink } from 'lucide-react';
+import MathCurveLoader from '../components/MathCurveLoader';
+import AnimatedMap from '../components/AnimatedMap';
+import getRidePrices from '../utils/getRidePrices';
 
 export default function RideResults() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  
-  const state = location.state || {}
-  const from = state.from || { name: 'Maharani College', lat: 26.9155, lng: 75.8166 }
-  const to = state.to || { name: 'World Trade Park', lat: 26.8530, lng: 75.8047 }
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const [isLoading, setIsLoading] = useState(true)
-  const [filter, setFilter] = useState('All') // All, Bikes, Autos, Cabs
+  const state = location.state || {};
+  const from = state.from || { name: 'Maharani College', lat: 26.9155, lng: 75.8166 };
+  const to = state.to || { name: 'World Trade Park', lat: 26.8530, lng: 75.8047 };
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [rideData, setRideData] = useState(null);
+  const [filter, setFilter] = useState('All'); // All, Bikes, Autos, Cabs
 
   useEffect(() => {
-    // Simulate complex scraping
-    const timer = setTimeout(() => {
-      setIsLoading(false)
-    }, 2500)
-    return () => clearTimeout(timer)
-  }, [])
+    const fetchRidePrices = async () => {
+      try {
+        const result = await getRidePrices({ from, to });
+        setRideData(result.data);
+      } catch (error) {
+        console.error("Error fetching ride prices: ", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  // Full Spectrum Pricing Engine
-  const rideData = useMemo(() => {
-    const straightLine = getDistance(from.lat, from.lng, to.lat, to.lng);
-    const distance = Math.max(1.2, straightLine * 1.3); // Driving dist
-    
-    const now = new Date();
-    const hours = now.getHours();
-    
-    // Complex Time Logic
-    const isNight = hours >= 23 || hours < 5;
-    const isTraffic = hours >= 17 && hours <= 21;
-    const isHeat = hours >= 12 && hours <= 16;
+    fetchRidePrices();
+  }, [from, to]);
 
-    // Platform Multipliers based on time
-    const rapidoMult = isNight ? 1.25 : (isHeat ? 1.1 : 1.0);
-    const olaMult = isNight ? 1.3 : (isHeat ? 1.15 : 1.0);
-    const uberMult = isTraffic ? 1.4 : (isNight ? 1.2 : 1.0);
-
-    const calcTime = (baseTime) => Math.round(distance * baseTime);
-
-    return {
-      distanceStr: distance.toFixed(1),
-      context: isNight ? "Night Surge" : (isTraffic ? "Peak Traffic" : "Standard Fares"),
-      rides: [
-        // BIKES
-        { id: 'r_bike', platform: 'Rapido', name: 'Bike', type: 'Bikes', icon: '🏍️', color: '#F59E0B', price: Math.round((15 + (distance * 6)) * rapidoMult), time: calcTime(2.5), eta: '3 min', link: 'rapido://' },
-        { id: 'o_bike', platform: 'Ola', name: 'Bike', type: 'Bikes', icon: '🏍️', color: '#34D399', price: Math.round((20 + (distance * 7)) * olaMult), time: calcTime(2.5), eta: '5 min', link: 'olacabs://' },
-        { id: 'u_moto', platform: 'Uber', name: 'Moto', type: 'Bikes', icon: '🏍️', color: '#3B82F6', price: Math.round((22 + (distance * 7.5)) * uberMult), time: calcTime(2.5), eta: '4 min', link: 'uber://' },
-        
-        // AUTOS
-        { id: 'r_auto', platform: 'Rapido', name: 'Auto', type: 'Autos', icon: '🛺', color: '#F59E0B', price: Math.round((25 + (distance * 10)) * rapidoMult), time: calcTime(3.5), eta: '6 min', link: 'rapido://' },
-        { id: 'o_auto', platform: 'Ola', name: 'Auto', type: 'Autos', icon: '🛺', color: '#34D399', price: Math.round((30 + (distance * 11)) * olaMult), time: calcTime(3.5), eta: '4 min', link: 'olacabs://', highlight: true, badge: 'Fastest', badgeClass: 'badge-warning' },
-        { id: 'u_auto', platform: 'Uber', name: 'Auto', type: 'Autos', icon: '🛺', color: '#3B82F6', price: Math.round((35 + (distance * 12)) * uberMult), time: calcTime(3.5), eta: '5 min', link: 'uber://' },
-
-        // CABS (MINI/GO)
-        { id: 'r_cab', platform: 'Rapido', name: 'Cab', type: 'Cabs', icon: '🚗', color: '#F59E0B', price: Math.round((45 + (distance * 13)) * rapidoMult), time: calcTime(3.5), eta: '8 min', link: 'rapido://' },
-        { id: 'o_mini', platform: 'Ola', name: 'Mini', type: 'Cabs', icon: '🚗', color: '#34D399', price: Math.round((50 + (distance * 14)) * olaMult), time: calcTime(3.5), eta: '7 min', link: 'olacabs://' },
-        { id: 'u_go', platform: 'Uber', name: 'Go', type: 'Cabs', icon: '🚗', color: '#3B82F6', price: Math.round((45 + (distance * 14)) * uberMult), time: calcTime(3.5), eta: '6 min', link: 'uber://' },
-
-        // PREMIUM CABS
-        { id: 'o_prime', platform: 'Ola', name: 'Prime', type: 'Cabs', icon: '🚙', color: '#34D399', price: Math.round((70 + (distance * 16)) * olaMult), time: calcTime(3.5), eta: '10 min', link: 'olacabs://' },
-        { id: 'u_prem', platform: 'Uber', name: 'Premier', type: 'Cabs', icon: '🚙', color: '#3B82F6', price: Math.round((80 + (distance * 17)) * uberMult), time: calcTime(3.5), eta: '9 min', link: 'uber://' },
-      ].sort((a, b) => a.price - b.price) // Always sort cheapest first
-    }
-  }, [from, to])
-
-  const filteredRides = filter === 'All' ? rideData.rides : rideData.rides.filter(r => r.type === filter)
-
-  // Find overall cheapest
-  const cheapestOverall = rideData.rides[0]
+  const filteredRides = rideData ? (filter === 'All' ? rideData.rides : rideData.rides.filter(r => r.type === filter)) : [];
+  const cheapestOverall = rideData ? rideData.rides[0] : null;
 
   if (isLoading) {
     return (
       <div className="page">
         <MathCurveLoader message="Scraping Live Aggregator APIs..." />
       </div>
-    )
+    );
   }
 
   return (
@@ -135,7 +83,7 @@ export default function RideResults() {
       {/* Context Badge */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <span className="caption" style={{ color: 'var(--text-secondary)' }}>Showing {filteredRides.length} rides</span>
-        {rideData.context !== "Standard Fares" && (
+        {rideData && rideData.context !== "Standard Fares" && (
           <span className="badge badge-error">{rideData.context}</span>
         )}
       </div>
@@ -155,12 +103,12 @@ export default function RideResults() {
               onClick={() => window.location.href = r.link}
               style={{
                 padding: 16, 
-                borderColor: r.highlight || r.id === cheapestOverall.id ? 'var(--accent-secondary)' : 'var(--border-subtle)',
-                borderWidth: r.highlight || r.id === cheapestOverall.id ? 2 : 1,
+                borderColor: r.highlight || (cheapestOverall && r.id === cheapestOverall.id) ? 'var(--accent-secondary)' : 'var(--border-subtle)',
+                borderWidth: r.highlight || (cheapestOverall && r.id === cheapestOverall.id) ? 2 : 1,
                 position: 'relative'
               }}
             >
-              {(r.highlight || r.id === cheapestOverall.id) && (
+              {(r.highlight || (cheapestOverall && r.id === cheapestOverall.id)) && (
                 <div style={{ position: 'absolute', top: -10, right: 16, backgroundColor: 'var(--bg-background)' }}>
                   <span className={`badge ${r.badgeClass || 'badge-success'}`}>{r.badge || 'Cheapest'}</span>
                 </div>
