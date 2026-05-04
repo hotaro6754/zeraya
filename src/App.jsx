@@ -4,7 +4,6 @@ import { AnimatePresence } from 'framer-motion'
 import BottomNav from './components/BottomNav'
 import ProtectedRoute from './components/ProtectedRoute';
 import OnboardingRoute from './components/OnboardingRoute';
-import { FirebaseProvider } from './hooks/useFirebase';
 
 // Screens
 import Splash from './screens/Splash'
@@ -60,7 +59,6 @@ export default function App() {
 
   return (
     <ThemeProvider>
-      <FirebaseProvider>
         <AnimatePresence mode="wait">
           <Routes location={location} key={location.pathname}>
             <Route path="/" element={<Splash />} />
@@ -85,7 +83,6 @@ export default function App() {
           </Routes>
         </AnimatePresence>
         {!isOnboarding && <BottomNav />}
-      </FirebaseProvider>
     </ThemeProvider>
   )
 }

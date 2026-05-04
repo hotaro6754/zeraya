@@ -1,10 +1,37 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Clock, Shield, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Clock, Shield, ExternalLink, AlertCircle } from 'lucide-react';
 import MathCurveLoader from '../components/MathCurveLoader';
 import AnimatedMap from '../components/AnimatedMap';
 import getRidePrices from '../utils/getRidePrices';
+
+// Fallback pricing logic if Cloud Function is not available
+const getFallbackRidePrices = (from, to) => {
+  const getDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  };
+
+  const straightLine = getDistance(from.lat, from.lng, to.lat, to.lng);
+  const distance = Math.max(1.2, straightLine * 1.3);
+  const calcTime = (baseTime) => Math.round(distance * baseTime);
+
+  const rides = [
+    { id: 'r_bike', platform: 'Rapido', name: 'Bike', type: 'Bikes', icon: '🏍️', color: '#F59E0B', price: Math.round(15 + (distance * 6)), time: calcTime(2.5), eta: '3 min', link: 'rapido://' },
+    { id: 'o_auto', platform: 'Ola', name: 'Auto', type: 'Autos', icon: '🛺', color: '#34D399', price: Math.round(30 + (distance * 11)), time: calcTime(3.5), eta: '4 min', link: 'olacabs://', highlight: true, badge: 'Fastest' },
+    { id: 'u_go', platform: 'Uber', name: 'Go', type: 'Cabs', icon: '🚗', color: '#3B82F6', price: Math.round(45 + (distance * 14)), time: calcTime(3.5), eta: '6 min', link: 'uber://' },
+  ].sort((a, b) => a.price - b.price);
+
+  return {
+    distanceStr: distance.toFixed(1),
+    context: "Standard Fares",
+    rides: rides,
+  };
+};
 
 export default function RideResults() {
   const navigate = useNavigate();
@@ -16,7 +43,8 @@ export default function RideResults() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [rideData, setRideData] = useState(null);
-  const [filter, setFilter] = useState('All'); // All, Bikes, Autos, Cabs
+  const [filter, setFilter] = useState('All');
+  const [usingFallback, setUsingFallback] = useState(false);
 
   useEffect(() => {
     const fetchRidePrices = async () => {
@@ -24,7 +52,9 @@ export default function RideResults() {
         const result = await getRidePrices({ from, to });
         setRideData(result.data);
       } catch (error) {
-        console.error("Error fetching ride prices: ", error);
+        console.warn("Cloud function failed, using local simulation:", error);
+        setRideData(getFallbackRidePrices(from, to));
+        setUsingFallback(true);
       } finally {
         setIsLoading(false);
       }
@@ -37,11 +67,7 @@ export default function RideResults() {
   const cheapestOverall = rideData ? rideData.rides[0] : null;
 
   if (isLoading) {
-    return (
-      <div className="page">
-        <MathCurveLoader message="Scraping Live Aggregator APIs..." />
-      </div>
-    );
+    return <div className="page"><MathCurveLoader message="Scraping Live Aggregator APIs..." /></div>;
   }
 
   return (
@@ -52,43 +78,27 @@ export default function RideResults() {
           <ArrowLeft size={20} color="var(--text-primary)" />
         </div>
         <div style={{ flex: 1, overflow: 'hidden' }}>
-          <h1 className="h2" style={{ fontSize: 20, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {to.name}
-          </h1>
-          <p className="caption" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            From: {from.name}
-          </p>
+          <h1 className="h2" style={{ fontSize: 20, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{to.name}</h1>
+          <p className="caption" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>From: {from.name}</p>
         </div>
       </div>
 
-      {/* 3D Map */}
       <div style={{ marginBottom: 20 }}>
         <AnimatedMap from={from} to={to} />
       </div>
 
-      {/* Filters */}
       <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 12, scrollbarWidth: 'none', marginBottom: 8 }}>
         {['All', 'Bikes', 'Autos', 'Cabs'].map(f => (
-          <div 
-            key={f} 
-            onClick={() => setFilter(f)}
-            className={`chip ${filter === f ? 'active' : ''}`}
-            style={{ padding: '6px 14px', flexShrink: 0 }}
-          >
-            {f}
-          </div>
+          <div key={f} onClick={() => setFilter(f)} className={`chip ${filter === f ? 'active' : ''}`} style={{ padding: '6px 14px', flexShrink: 0 }}>{f}</div>
         ))}
       </div>
 
-      {/* Context Badge */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <span className="caption" style={{ color: 'var(--text-secondary)' }}>Showing {filteredRides.length} rides</span>
-        {rideData && rideData.context !== "Standard Fares" && (
-          <span className="badge badge-error">{rideData.context}</span>
-        )}
+        {usingFallback && <span className="badge badge-warning" style={{ fontSize: 10 }}>Simulation Mode</span>}
+        {rideData && rideData.context !== "Standard Fares" && <span className="badge badge-error">{rideData.context}</span>}
       </div>
 
-      {/* Ride Cards List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 40 }}>
         <AnimatePresence mode="popLayout">
           {filteredRides.map((r, i) => (
@@ -116,47 +126,18 @@ export default function RideResults() {
               
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{
-                    width: 44, height: 44, borderRadius: 'var(--radius-sm)', fontSize: 22,
-                    backgroundColor: 'var(--bg-background)', border: '1px solid var(--border-subtle)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {r.icon}
-                  </div>
+                  <div style={{ width: 44, height: 44, borderRadius: 'var(--radius-sm)', fontSize: 22, backgroundColor: 'var(--bg-background)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{r.icon}</div>
                   <div>
-                    <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>
-                      {r.platform} <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{r.name}</span>
-                    </div>
-                    <div className="caption" style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                      <Clock size={11} /> ETA {r.eta}
-                    </div>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>{r.platform} <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{r.name}</span></div>
+                    <div className="caption" style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}><Clock size={11} /> ETA {r.eta}</div>
                   </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{
-                    fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--text-primary)',
-                  }}>
-                    ₹{r.price}
-                  </div>
-                </div>
+                <div style={{ textAlign: 'right' }}><div style={{ fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>₹{r.price}</div></div>
               </div>
 
-              <div style={{
-                display: 'flex', gap: 12, justifyContent: 'space-between',
-                paddingTop: 12, borderTop: '1px solid var(--border-subtle)',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Clock size={13} color="var(--text-tertiary)" />
-                  <span className="caption">{r.time} min ride</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Shield size={13} color="var(--text-tertiary)" />
-                  <span className="caption">Verified</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: r.color }}>
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>Book on {r.platform}</span>
-                  <ExternalLink size={13} />
-                </div>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'space-between', paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Clock size={13} color="var(--text-tertiary)" /><span className="caption">{r.time} min ride</span></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: r.color }}><span style={{ fontSize: 13, fontWeight: 600 }}>Book on {r.platform}</span><ExternalLink size={13} /></div>
               </div>
             </motion.div>
           ))}

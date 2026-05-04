@@ -1,9 +1,8 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
+import { useFirebase } from '../hooks/useFirebase';
 import { ArrowRight, Laptop, Music, Trophy, Palette, Pizza, Plane, Book, Dumbbell, Film, Gamepad2, Camera, Code, Mic, Rocket, Shirt } from 'lucide-react';
 
 const ALL_INTERESTS = [
@@ -26,6 +25,7 @@ const ALL_INTERESTS = [
 
 export default function Interests() {
   const navigate = useNavigate();
+  const { user, db } = useFirebase();
   const [selected, setSelected] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -41,10 +41,9 @@ export default function Interests() {
       return;
     }
 
-    const user = auth.currentUser;
     if (!user) {
       alert('You are not logged in!');
-      navigate('/auth');
+      navigate('/login');
       return;
     }
 
@@ -53,10 +52,10 @@ export default function Interests() {
       const userDocRef = doc(db, 'users', user.uid);
       await setDoc(userDocRef, {
         interests: selected,
-        onboardingComplete: true, // <-- set onboarding to true
+        onboardingComplete: true,
       }, { merge: true });
 
-      navigate('/location'); // <-- navigate to location screen
+      navigate('/location');
     } catch (error) {
       console.error("Error saving interests: ", error);
       alert('Failed to save your interests. Please try again.');
