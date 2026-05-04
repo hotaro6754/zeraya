@@ -19,6 +19,7 @@ export const useFirebase = () => {
 export const FirebaseProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [firebaseError, setFirebaseError] = useState(null);
   const [dataLoading, setDataLoading] = useState({
     posts: true,
     stories: true,
@@ -35,24 +36,52 @@ export const FirebaseProvider = ({ children }) => {
   const [discoverPins, setDiscoverPins] = useState([]);
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-        const unsubscribeUser = onSnapshot(userDocRef, (doc) => {
-          if (doc.exists()) {
-            setUser({ ...firebaseUser, ...doc.data() });
-          } else {
+    // Fallback: if Firebase isn't configured, stop loading after 3s
+    const fallbackTimer = setTimeout(() => {
+      console.warn('[v0] Firebase auth timed out — likely missing env vars. Rendering app anyway.');
+      setLoading(false);
+    }, 3000);
+
+    let unsubscribeAuth;
+    try {
+      unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+        clearTimeout(fallbackTimer);
+        if (firebaseUser) {
+          const userDocRef = doc(db, 'users', firebaseUser.uid);
+          const unsubscribeUser = onSnapshot(userDocRef, (snap) => {
+            if (snap.exists()) {
+              setUser({ ...firebaseUser, ...snap.data() });
+            } else {
+              setUser(firebaseUser);
+            }
+            setLoading(false);
+          }, (err) => {
+            console.error('[v0] Firestore user snapshot error:', err.message);
             setUser(firebaseUser);
-          }
+            setLoading(false);
+          });
+          return () => unsubscribeUser();
+        } else {
+          setUser(null);
           setLoading(false);
-        });
-        return () => unsubscribeUser();
-      } else {
-        setUser(null);
+        }
+      }, (err) => {
+        console.error('[v0] Firebase auth error:', err.message);
+        clearTimeout(fallbackTimer);
+        setFirebaseError(err.message);
         setLoading(false);
-      }
-    });
-    return () => unsubscribeAuth();
+      });
+    } catch (err) {
+      console.error('[v0] Firebase init error:', err.message);
+      clearTimeout(fallbackTimer);
+      setFirebaseError(err.message);
+      setLoading(false);
+    }
+
+    return () => {
+      clearTimeout(fallbackTimer);
+      if (unsubscribeAuth) unsubscribeAuth();
+    };
   }, []);
 
   useEffect(() => {
@@ -203,6 +232,7 @@ export const FirebaseProvider = ({ children }) => {
   const value = {
     user,
     loading,
+    firebaseError,
     dataLoading,
     posts,
     stories,
@@ -216,9 +246,34 @@ export const FirebaseProvider = ({ children }) => {
     seedData
   };
 
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100dvh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--bg-background)',
+        flexDirection: 'column',
+        gap: 16,
+      }}>
+        <div style={{
+          width: 40,
+          height: 40,
+          borderRadius: '50%',
+          border: '3px solid var(--border-subtle)',
+          borderTopColor: 'var(--accent-primary)',
+          animation: 'spin 0.8s linear infinite',
+        }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <p style={{ color: 'var(--text-tertiary)', fontSize: 13, fontFamily: 'var(--font-body)' }}>Loading Zeraya…</p>
+      </div>
+    );
+  }
+
   return (
     <FirebaseContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </FirebaseContext.Provider>
   );
 };

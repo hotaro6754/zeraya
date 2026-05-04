@@ -18,12 +18,15 @@
   },
   "dependencies": {
     "@turf/turf": "^7.3.5",
+    "@vitejs/plugin-react": "^6.0.1",
     "clsx": "^2.1.1",
     "firebase": "^12.12.1",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.8.0",
     "maplibre-gl": "^5.23.0",
     "next-themes": "^0.4.6",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
     "react-map-gl": "^8.1.1",
     "react-router-dom": "^7.14.2",
     "tailwind-merge": "^3.5.0"
