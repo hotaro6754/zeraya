@@ -1,16 +1,11 @@
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Users, ShieldCheck } from 'lucide-react'
-
-const GROUPS = [
-  { id: 1, name: 'Maharani Connect', members: '2.4k', desc: 'Main college group for announcements', type: 'Official' },
-  { id: 2, name: 'UI/UX Enthusiasts', members: '156', desc: 'Design resources and feedback', type: 'Club' },
-  { id: 3, name: 'Jaipur Hackers', members: '840', desc: 'Coding, hackathons, web3', type: 'Community' },
-  { id: 4, name: 'Thrift Finds', members: '430', desc: 'Buy/sell books, clothes, tech', type: 'Market' },
-]
+import { useFirebase } from '../hooks/useFirebase'
 
 export default function SocialGroups() {
   const navigate = useNavigate()
+  const { groups, dataLoading } = useFirebase();
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="page" style={{ paddingTop: 16 }}>
@@ -24,7 +19,8 @@ export default function SocialGroups() {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {GROUPS.map((g, i) => (
+        {dataLoading.groups && <p>Loading groups...</p>}
+        {groups.map((g, i) => (
           <motion.div
             key={g.id}
             initial={{ y: 10, opacity: 0 }}
@@ -58,6 +54,7 @@ export default function SocialGroups() {
             </div>
           </motion.div>
         ))}
+        {!dataLoading.groups && groups.length === 0 && <p className="caption">No groups found. Seed data in profile to see samples.</p>}
       </div>
     </motion.div>
   )

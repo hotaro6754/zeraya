@@ -5,7 +5,7 @@ import { useFirebase } from '../hooks/useFirebase';
 export default function OnboardingRoute({ children }) {
   const { user } = useFirebase();
 
-  if (user && !user.isOnboardingComplete) {
+  if (user && !user.onboardingComplete) {
     return <Navigate to="/interests" />;
   }
 

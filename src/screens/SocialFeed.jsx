@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Heart, MessageCircle, Share2, MoreHorizontal, Plus, AlertTriangle, Inbox } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Heart, MessageCircle, Share2, MoreHorizontal, Plus, AlertTriangle, Inbox, Send, Image as ImageIcon, X } from 'lucide-react';
 import { useFirebase } from '../hooks/useFirebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const Skeleton = () => (
   <div className="skeleton-post">
@@ -19,8 +20,11 @@ const Skeleton = () => (
 
 export default function SocialFeed() {
   const navigate = useNavigate();
-  const { user, posts, stories, loading, error, toggleLike } = useFirebase();
+  const { user, posts, stories, dataLoading, toggleLike, db } = useFirebase();
   const [toast, setToast] = useState(null);
+  const [showPostModal, setShowPostModal] = useState(false);
+  const [newPostContent, setNewPostContent] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleLike = async (postId, isLiked) => {
     if (!user) {
@@ -36,9 +40,36 @@ export default function SocialFeed() {
     }
   };
 
+  const handleCreatePost = async () => {
+    if (!newPostContent.trim()) return;
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, 'posts'), {
+        user: user.displayName || user.email,
+        avatar: user.photoURL || 'https://via.placeholder.com/100',
+        content: newPostContent,
+        time: 'Just now',
+        likes: 0,
+        likedBy: [],
+        comments: 0,
+        createdAt: serverTimestamp(),
+        authorId: user.uid
+      });
+      setNewPostContent('');
+      setShowPostModal(false);
+      setToast("Post shared!");
+      setTimeout(() => setToast(null), 2500);
+    } catch (err) {
+      console.error(err);
+      setToast("Failed to share post.");
+      setTimeout(() => setToast(null), 2500);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const renderStories = () => {
-    if (loading.stories) return <div className="stories-loading-container">{[...Array(4)].map((_,i) => <div key={i} className="skeleton-story"/>)}</div>;
-    if (error.stories) return null;
+    if (dataLoading.stories) return <div className="stories-loading-container">{[...Array(4)].map((_,i) => <div key={i} className="skeleton-story"/>)}</div>;
     
     const allStories = [{ id: 'add', user: 'Your Story', img: user?.photoURL, isAdd: true }, ...stories];
 
@@ -68,13 +99,18 @@ export default function SocialFeed() {
   };
 
   const renderPosts = () => {
-    if (loading.posts) return <div className="posts-container">{[...Array(3)].map((_, i) => <Skeleton key={i} />)}</div>;
-    if (error.posts) return <div className="error-container"><AlertTriangle size={40} /><p>{error.posts}</p></div>;
+    if (dataLoading.posts) return <div className="posts-container">{[...Array(3)].map((_, i) => <Skeleton key={i} />)}</div>;
     if (posts.length === 0) return <div className="empty-feed-container"><Inbox size={40} /><p>No posts yet. Be the first to share!</p></div>;
+
+    // Sort posts by createdAt if available, otherwise just as is
+    const sortedPosts = [...posts].sort((a, b) => {
+        if (a.createdAt && b.createdAt) return b.createdAt.seconds - a.createdAt.seconds;
+        return 0;
+    });
 
     return (
       <div className="posts-container">
-        {posts.map((p, i) => {
+        {sortedPosts.map((p, i) => {
           const isLiked = user && p.likedBy && p.likedBy.includes(user.uid);
           return (
             <motion.div 
@@ -117,16 +153,68 @@ export default function SocialFeed() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="page social-feed-page">
-      {toast && <div className="toast">{toast}</div>}
+      {toast && <div className="toast" style={{ zIndex: 1000 }}>{toast}</div>}
       <div className="social-feed-header">
         <h1 className="h1">Campus</h1>
-        <div className="social-feed-nav">
-          <span className="caption font-semibold accent-secondary" onClick={() => navigate('/social-groups')}>Groups</span>
-          <span className="caption font-semibold text-secondary" onClick={() => navigate('/social-explore')}>Explore</span>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div onClick={() => setShowPostModal(true)} style={{ width: 36, height: 36, borderRadius: '50%', backgroundColor: 'var(--accent-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            <Plus size={20} />
+          </div>
+          <div className="social-feed-nav">
+            <span className="caption font-semibold accent-secondary" onClick={() => navigate('/social-groups')}>Groups</span>
+          </div>
         </div>
       </div>
       {renderStories()}
       {renderPosts()}
+
+      <AnimatePresence>
+        {showPostModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="modal-overlay"
+            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)', zIndex: 2000, display: 'flex', alignItems: 'flex-end' }}
+          >
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              style={{ width: '100%', backgroundColor: 'var(--bg-background)', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <h2 className="h2">Create Post</h2>
+                <div onClick={() => setShowPostModal(false)} style={{ cursor: 'pointer', padding: 4 }}><X size={24} /></div>
+              </div>
+
+              <textarea
+                autoFocus
+                placeholder="What's happening on campus?"
+                value={newPostContent}
+                onChange={(e) => setNewPostContent(e.target.value)}
+                style={{ width: '100%', height: 120, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: 16, color: 'var(--text-primary)', fontSize: 16, resize: 'none', marginBottom: 20, outline: 'none' }}
+              />
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 16 }}>
+                  <ImageIcon size={22} color="var(--text-secondary)" />
+                  <Plus size={22} color="var(--text-secondary)" />
+                </div>
+                <button
+                  onClick={handleCreatePost}
+                  disabled={isSubmitting || !newPostContent.trim()}
+                  className="btn btn-primary"
+                  style={{ padding: '10px 24px', borderRadius: 100, gap: 8 }}
+                >
+                  {isSubmitting ? 'Posting...' : 'Share Post'} <Send size={18} />
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

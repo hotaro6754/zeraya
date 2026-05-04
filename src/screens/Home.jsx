@@ -19,7 +19,7 @@ const recentRides = [
 
 export default function Home() {
   const navigate = useNavigate();
-  const { user, posts, loading } = useFirebase();
+  const { user, events, dataLoading } = useFirebase();
 
   return (
     <motion.div
@@ -41,7 +41,7 @@ export default function Home() {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <p className="body-sm" style={{ color: 'var(--text-tertiary)' }}>Good evening,</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <h1 className="hero" style={{ marginTop: 2 }}>{user ? user.displayName.split(' ')[0] : 'User'} ✦</h1>
+            <h1 className="hero" style={{ marginTop: 2 }}>{user?.displayName ? user.displayName.split(' ')[0] : 'User'} ✦</h1>
           </div>
         </motion.div>
         <div style={{ display: 'flex', gap: 12 }}>
@@ -49,7 +49,7 @@ export default function Home() {
             <Bell size={18} />
           </div>
           <div className="avatar" onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }}>
-            {user ? user.displayName[0] : 'U'}
+            {user?.photoURL ? <img src={user.photoURL} alt="profile" style={{ width: '100%', height: '100%', borderRadius: '50%' }} /> : (user?.displayName?.[0] || 'U')}
           </div>
         </div>
       </header>
@@ -89,33 +89,34 @@ export default function Home() {
         <span className="see-all" onClick={() => navigate('/events')}>See all</span>
       </div>
 
-      {loading && <p>Loading events...</p>}
+      {dataLoading.events && <p>Loading events...</p>}
       
-      {!loading && (
+      {!dataLoading.events && (
         <div className="horizontal-scroll-container">
-          {posts.map((post, i) => (
+          {events.map((event, i) => (
             <motion.div
-              key={post.id}
+              key={event.id}
               initial={{ x: 20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               transition={{ delay: 0.1 + i * 0.05 }}
-              onClick={() => navigate(`/event/${post.id}`)}
+              onClick={() => navigate(`/event/${event.id}`)}
               className="card card-interactive event-card"
             >
               <div className="event-card-header">
-                <h4 className="event-card-title">{post.title}</h4>
-                <span className="badge badge-neutral">{post.tag || 'New'}</span>
+                <h4 className="event-card-title">{event.title}</h4>
+                <span className="badge badge-neutral">{event.category || 'New'}</span>
               </div>
               <div className="event-card-footer">
                 <span className="caption">
-                  <CalendarDays size={12} /> {new Date(post.date.seconds * 1000).toLocaleDateString()}
+                  <CalendarDays size={12} /> {event.date?.seconds ? new Date(event.date.seconds * 1000).toLocaleDateString() : event.date}
                 </span>
                 <span className="caption">
-                  <Users size={12} /> {post.attendees}
+                  <Users size={12} /> {event.attendees}
                 </span>
               </div>
             </motion.div>
           ))}
+          {events.length === 0 && <p className="caption" style={{ padding: 16 }}>No upcoming events.</p>}
         </div>
       )}
 

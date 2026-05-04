@@ -1,31 +1,80 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, MapPin, Calendar, Clock, Share2, Info } from 'lucide-react'
+import { ArrowLeft, MapPin, Calendar, Clock, Share2, Users } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, increment } from 'firebase/firestore'
+import { useFirebase } from '../hooks/useFirebase'
 
 export default function EventDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { db, user } = useFirebase()
+  const [event, setEvent] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [toast, setToast] = useState(null)
 
-  // In a real app, fetch event by id
-  // For demo, we use TEDx Jaipur
-  const event = {
-    title: 'TEDx Jaipur: Future Tense',
-    club: 'TEDx Community',
-    date: 'May 12, 2024',
-    time: '4:00 PM - 8:00 PM',
-    location: 'Deep Smriti Auditorium, Jaipur',
-    attendees: 420,
-    price: '₹299',
-    description: 'Join us for an evening of thought-provoking ideas and inspiring stories. Future Tense explores the intersection of technology, humanity, and our shared future in a rapidly changing world.',
-    image: 'https://images.unsplash.com/photo-1540575861501-7ad0582371f3?w=800&q=80',
-    speakers: [
-      { name: 'Dr. Anjali Sharma', role: 'AI Ethicist', img: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&q=80' },
-      { name: 'Vikram Singh', role: 'Urban Architect', img: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&q=80' }
-    ]
+  useEffect(() => {
+    const fetchEvent = async () => {
+      try {
+        const docRef = doc(db, 'events', id)
+        const docSnap = await getDoc(docRef)
+        if (docSnap.exists()) {
+          setEvent({ id: docSnap.id, ...docSnap.data() })
+        } else {
+          console.log("No such document!")
+        }
+      } catch (error) {
+        console.error("Error fetching event:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchEvent()
+  }, [id, db])
+
+  const handleJoinToggle = async () => {
+    if (!user) {
+      setToast("Please log in to join events")
+      setTimeout(() => setToast(null), 2500)
+      return
+    }
+
+    const isJoined = event.joinedBy && event.joinedBy.includes(user.uid)
+    const eventRef = doc(db, 'events', id)
+
+    try {
+      await updateDoc(eventRef, {
+        joinedBy: isJoined ? arrayRemove(user.uid) : arrayUnion(user.uid),
+        attendees: increment(isJoined ? -1 : 1)
+      })
+
+      // Update local state
+      setEvent(prev => ({
+        ...prev,
+        joinedBy: isJoined
+          ? prev.joinedBy.filter(uid => uid !== user.uid)
+          : [...(prev.joinedBy || []), user.uid],
+        attendees: isJoined ? prev.attendees - 1 : prev.attendees + 1
+      }))
+
+      setToast(isJoined ? "You've left the event" : "You're in! 🎉")
+      setTimeout(() => setToast(null), 2500)
+    } catch (error) {
+      console.error("Error updating event:", error)
+      setToast("Something went wrong.")
+      setTimeout(() => setToast(null), 2500)
+    }
   }
+
+  if (loading) return <div className="page-loading">Loading event...</div>
+  if (!event) return <div className="page centered"><p>Event not found.</p><button className="btn btn-primary" onClick={() => navigate('/events')}>Back to Events</button></div>
+
+  const isJoined = user && event.joinedBy && event.joinedBy.includes(user.uid)
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="page" style={{ padding: 0 }}>
+      {toast && <div className="toast" style={{ zIndex: 1000 }}>{toast}</div>}
+
       {/* Hero Header */}
       <div style={{ height: 300, position: 'relative', overflow: 'hidden' }}>
         <img src={event.image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -46,7 +95,7 @@ export default function EventDetail() {
 
         {/* Title Content */}
         <div style={{ position: 'absolute', bottom: 24, left: 20, right: 20 }}>
-          <span className="badge badge-warning" style={{ marginBottom: 12 }}>Limited Seats</span>
+          <span className="badge badge-warning" style={{ marginBottom: 12 }}>{event.category}</span>
           <h1 className="hero" style={{ color: '#FFFFFF', fontSize: 28 }}>{event.title}</h1>
         </div>
       </div>
@@ -59,14 +108,16 @@ export default function EventDetail() {
             <Calendar size={18} color="var(--accent-primary)" />
             <div>
               <div className="caption">Date</div>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>{event.date}</div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>
+                {event.date?.seconds ? new Date(event.date.seconds * 1000).toLocaleDateString() : event.date}
+              </div>
             </div>
           </div>
           <div className="card" style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Clock size={18} color="var(--accent-primary)" />
+            <Users size={18} color="var(--accent-primary)" />
             <div>
-              <div className="caption">Time</div>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>{event.time}</div>
+              <div className="caption">Going</div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>{event.attendees} attendees</div>
             </div>
           </div>
         </div>
@@ -86,28 +137,32 @@ export default function EventDetail() {
         </div>
 
         {/* Speakers */}
-        <div>
-          <div className="overline" style={{ marginBottom: 12 }}>FEATURED SPEAKERS</div>
-          <div style={{ display: 'flex', gap: 16 }}>
-            {event.speakers.map(s => (
-              <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <img src={s.img} style={{ width: 44, height: 44, borderRadius: 'var(--radius-full)', objectFit: 'cover', border: '2px solid var(--border-subtle)' }} />
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{s.name}</div>
-                  <div className="caption">{s.role}</div>
+        {event.speakers && event.speakers.length > 0 && (
+          <div>
+            <div className="overline" style={{ marginBottom: 12 }}>FEATURED SPEAKERS</div>
+            <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 8 }}>
+              {event.speakers.map((s, idx) => (
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                  <img src={s.img} style={{ width: 44, height: 44, borderRadius: 'var(--radius-full)', objectFit: 'cover', border: '2px solid var(--border-subtle)' }} />
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>{s.name}</div>
+                    <div className="caption">{s.role || 'Speaker'}</div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Bottom Booking Action */}
         <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 16, paddingTop: 20, borderTop: '1px solid var(--border-subtle)' }}>
-          <div>
-            <div className="caption">Ticket Price</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)' }}>{event.price}</div>
-          </div>
-          <button className="btn btn-primary" style={{ flex: 1, height: 54 }}>Book Your Slot</button>
+          <button
+            className={`btn ${isJoined ? 'btn-secondary' : 'btn-primary'}`}
+            style={{ flex: 1, height: 54 }}
+            onClick={handleJoinToggle}
+          >
+            {isJoined ? '✓ Joined' : 'Join Event'}
+          </button>
         </div>
       </div>
     </motion.div>

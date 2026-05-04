@@ -1,14 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MapPin, ShieldCheck } from 'lucide-react';
-import { auth, db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { useFirebase } from '../hooks/useFirebase';
 
 export default function LocationPerm() {
   const navigate = useNavigate();
+  const { user, db } = useFirebase();
 
   const handleLocationPreference = async (preference) => {
-    const user = auth.currentUser;
     if (user) {
       try {
         const userDocRef = doc(db, 'users', user.uid);
