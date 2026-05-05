@@ -8,24 +8,9 @@ const VIBES = ['Adventure', 'Chill', 'Culture', 'Foodie', 'Nature', 'Party', 'Bu
 export default function AiPlanner() {
   const navigate = useNavigate()
   const [vibe, setVibe] = useState(['Budget'])
-  const [destination, setDestination] = useState('Udaipur')
-  const [days, setDays] = useState(3)
-  const [budget, setBudget] = useState('4000')
-  const [people, setPeople] = useState(2)
 
   const toggleVibe = (v) => {
     setVibe(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v])
-  }
-
-  const handleGenerate = () => {
-    const preferences = {
-      destination,
-      days,
-      budget,
-      people,
-      vibe: vibe.join(', ')
-    }
-    navigate('/ai-planner-result', { state: { preferences } })
   }
 
   return (
@@ -66,12 +51,7 @@ export default function AiPlanner() {
           <label className="caption" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, fontWeight: 600 }}>
             <MapPin size={14} /> Destination
           </label>
-          <input
-            className="input"
-            placeholder="e.g. Udaipur, Goa, Manali..."
-            value={destination}
-            onChange={(e) => setDestination(e.target.value)}
-          />
+          <input className="input" placeholder="e.g. Udaipur, Goa, Manali..." defaultValue="Udaipur" />
         </div>
 
         <div style={{ display: 'flex', gap: 12 }}>
@@ -85,13 +65,7 @@ export default function AiPlanner() {
             <label className="caption" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, fontWeight: 600 }}>
               <Calendar size={14} /> Days
             </label>
-            <input
-              type="number"
-              className="input"
-              placeholder="3"
-              value={days}
-              onChange={(e) => setDays(e.target.value)}
-            />
+            <input type="number" className="input" placeholder="3" defaultValue={3} />
           </div>
         </div>
 
@@ -100,25 +74,13 @@ export default function AiPlanner() {
             <label className="caption" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, fontWeight: 600 }}>
               <Users size={14} /> People
             </label>
-            <input
-              type="number"
-              className="input"
-              placeholder="2"
-              value={people}
-              onChange={(e) => setPeople(e.target.value)}
-            />
+            <input type="number" className="input" placeholder="2" defaultValue={4} />
           </div>
           <div style={{ flex: 1 }}>
             <label className="caption" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, fontWeight: 600 }}>
               <IndianRupee size={14} /> Budget
             </label>
-            <input
-              type="text"
-              className="input"
-              placeholder="₹5,000"
-              value={budget}
-              onChange={(e) => setBudget(e.target.value)}
-            />
+            <input type="text" className="input" placeholder="₹5,000" defaultValue="₹4,000" />
           </div>
         </div>
 
@@ -141,7 +103,7 @@ export default function AiPlanner() {
       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} style={{ marginTop: 32 }}>
         <button 
           className="btn btn-primary btn-full btn-lg" 
-          onClick={handleGenerate}
+          onClick={() => navigate('/ai-planner-result')}
           style={{ gap: 8 }}
         >
           <Sparkles size={18} /> Generate Itinerary

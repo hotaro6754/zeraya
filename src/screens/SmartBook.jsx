@@ -2,15 +2,6 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Plus, Wallet, Coffee, Train, Ticket, Utensils, Receipt } from 'lucide-react'
-import { useFirebase } from '../hooks/useFirebase'
-
-const ICONS = {
-    Coffee,
-    Train,
-    Ticket,
-    Utensils,
-    Receipt
-}
 
 const SUMMARY = [
   { category: 'Food', amount: '₹850', color: 'var(--success)' },
@@ -18,12 +9,19 @@ const SUMMARY = [
   { category: 'Events', amount: '₹307', color: 'var(--accent-secondary)' },
 ]
 
+const RECEIPTS = [
+  { id: 1, title: 'Tapri Central', date: 'Today, 2:45 PM', amount: '₹340', category: 'Food', icon: Coffee },
+  { id: 2, title: 'Rapido to WTP', date: 'Yesterday', amount: '₹45', category: 'Travel', icon: Train },
+  { id: 3, title: 'TEDx Ticket', date: 'Apr 20', amount: '₹250', category: 'Events', icon: Ticket },
+  { id: 4, title: 'Canteen Samosa', date: 'Apr 19', amount: '₹30', category: 'Food', icon: Utensils },
+  { id: 5, title: 'Uber to Station', date: 'Apr 18', amount: '₹142', category: 'Travel', icon: Train },
+]
+
 export default function SmartBook() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const { transactions, dataLoading } = useFirebase();
 
-  const filtered = transactions.filter(r => r.title.toLowerCase().includes(search.toLowerCase()))
+  const filtered = RECEIPTS.filter(r => r.title.toLowerCase().includes(search.toLowerCase()))
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="page" style={{ paddingTop: 16 }}>
@@ -62,7 +60,7 @@ export default function SmartBook() {
           <span className="caption" style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em' }}>This Month</span>
         </div>
         <div style={{ fontSize: 48, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--text-primary)', marginBottom: 24, letterSpacing: '-0.02em' }}>
-          ₹{transactions.reduce((acc, curr) => acc + parseInt(curr.amount.replace('₹', '').replace(',', '')), 0) || '1,577'}
+          ₹1,577
         </div>
         
         {/* Progress Bar */}
@@ -100,44 +98,37 @@ export default function SmartBook() {
       />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {dataLoading.transactions && <p>Loading receipts...</p>}
-        {filtered.map((r, i) => {
-          const Icon = ICONS[r.icon] || Receipt;
-          return (
-            <motion.div
-              key={r.id}
-              initial={{ y: 10, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: i * 0.05 }}
-              className="card-interactive"
-              style={{
-                display: 'flex', alignItems: 'center', gap: 16,
-                padding: '16px',
-                backgroundColor: 'var(--bg-surface)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-md)'
-              }}
-            >
-              <div style={{
-                width: 44, height: 44, borderRadius: 'var(--radius-full)',
-                backgroundColor: 'var(--bg-background)', border: '1px solid var(--border-subtle)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}>
-                <Icon size={20} color="var(--text-secondary)" />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>{r.title}</div>
-                <div className="caption" style={{ marginTop: 2 }}>
-                    {r.date?.seconds ? new Date(r.date.seconds * 1000).toLocaleString() : r.date}
-                </div>
-              </div>
-              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
-                {r.amount}
-              </div>
-            </motion.div>
-          )
-        })}
-        {!dataLoading.transactions && filtered.length === 0 && <p className="caption">No receipts found.</p>}
+        {filtered.map((r, i) => (
+          <motion.div
+            key={r.id}
+            initial={{ y: 10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: i * 0.05 }}
+            className="card-interactive"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 16,
+              padding: '16px',
+              backgroundColor: 'var(--bg-surface)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-md)'
+            }}
+          >
+            <div style={{
+              width: 44, height: 44, borderRadius: 'var(--radius-full)',
+              backgroundColor: 'var(--bg-background)', border: '1px solid var(--border-subtle)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <r.icon size={20} color="var(--text-secondary)" />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>{r.title}</div>
+              <div className="caption" style={{ marginTop: 2 }}>{r.date}</div>
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+              {r.amount}
+            </div>
+          </motion.div>
+        ))}
       </div>
     </motion.div>
   )

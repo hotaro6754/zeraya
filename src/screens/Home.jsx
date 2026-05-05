@@ -1,7 +1,6 @@
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Search, Bell, Car, CalendarDays, Compass, Brain, BookOpen, Users, ChevronRight, TrendingUp, Zap } from 'lucide-react';
-import { useFirebase } from '../hooks/useFirebase';
+import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { Search, Bell, Car, CalendarDays, Compass, Brain, BookOpen, Users, ChevronRight, TrendingUp, Zap, Sparkles } from 'lucide-react'
 
 const quickActions = [
   { icon: Car, label: 'Rides', path: '/ride-search' },
@@ -10,16 +9,21 @@ const quickActions = [
   { icon: Brain, label: 'AI Plan', path: '/ai-planner' },
   { icon: BookOpen, label: 'Vault', path: '/smart-book' },
   { icon: Users, label: 'Social', path: '/social' },
-];
+]
+
+const trendingEvents = [
+  { id: 1, title: 'TEDx Maharani College', date: 'Apr 28', attendees: 234, tag: 'Popular' },
+  { id: 2, title: 'Startup Weekend', date: 'May 3', attendees: 189, tag: 'New' },
+  { id: 3, title: 'Cultural Night 2026', date: 'May 10', attendees: 456, tag: 'Hot' },
+]
 
 const recentRides = [
   { from: 'Maharani College', to: 'C-Scheme', best: 'Rapido', price: '₹45', time: '12 min' },
   { from: 'Tonk Road', to: 'Mansarovar', best: 'Ola Auto', price: '₹62', time: '18 min' },
-];
+]
 
 export default function Home() {
-  const navigate = useNavigate();
-  const { user, events, dataLoading } = useFirebase();
+  const navigate = useNavigate()
 
   return (
     <motion.div
@@ -37,34 +41,45 @@ export default function Home() {
       }} />
 
       {/* Header */}
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, position: 'relative', zIndex: 1 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, position: 'relative', zIndex: 1 }}>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <p className="body-sm" style={{ color: 'var(--text-tertiary)' }}>Good evening,</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <h1 className="hero" style={{ marginTop: 2 }}>{user?.displayName ? user.displayName.split(' ')[0] : 'User'} ✦</h1>
+            <h1 className="hero" style={{ marginTop: 2 }}>Priya ✦</h1>
           </div>
         </motion.div>
         <div style={{ display: 'flex', gap: 12 }}>
-          <div className="icon-btn">
-            <Bell size={18} />
+          <div style={{
+            width: 40, height: 40, borderRadius: 'var(--radius-full)',
+            backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+            boxShadow: 'var(--shadow-sm)'
+          }}>
+            <Bell size={18} color="var(--text-secondary)" />
           </div>
-          <div className="avatar" onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }}>
-            {user?.photoURL ? <img src={user.photoURL} alt="profile" style={{ width: '100%', height: '100%', borderRadius: '50%' }} /> : (user?.displayName?.[0] || 'U')}
-          </div>
+          <div className="avatar" onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }}>P</div>
         </div>
-      </header>
+      </div>
 
       {/* Search Bar */}
       <div
         onClick={() => navigate('/ride-search')}
-        className="search-bar"
+        style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '14px 16px', backgroundColor: 'var(--bg-surface)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 'var(--radius-lg)', cursor: 'pointer', marginBottom: 28,
+          boxShadow: 'var(--shadow-sm)', transition: 'border-color 0.2s'
+        }}
+        onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--border-strong)'}
+        onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
       >
         <Search size={18} color="var(--text-tertiary)" />
-        <span>Where to?</span>
+        <span style={{ fontSize: 15, color: 'var(--text-tertiary)' }}>Where to?</span>
       </div>
 
       {/* Quick Actions */}
-      <div className="quick-actions-grid">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 32 }}>
         {quickActions.map((a, i) => (
           <motion.div
             key={a.label}
@@ -72,10 +87,14 @@ export default function Home() {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: i * 0.05 }}
             onClick={() => navigate(a.path)}
-            className="card card-interactive quick-action-card"
+            className="card card-interactive"
+            style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+              padding: '16px 8px', borderRadius: 'var(--radius-lg)',
+            }}
           >
             <a.icon size={22} color="var(--text-primary)" />
-            <span className="quick-action-label">{a.label}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>{a.label}</span>
           </motion.div>
         ))}
       </div>
@@ -89,36 +108,34 @@ export default function Home() {
         <span className="see-all" onClick={() => navigate('/events')}>See all</span>
       </div>
 
-      {dataLoading.events && <p>Loading events...</p>}
-      
-      {!dataLoading.events && (
-        <div className="horizontal-scroll-container">
-          {events.map((event, i) => (
-            <motion.div
-              key={event.id}
-              initial={{ x: 20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.1 + i * 0.05 }}
-              onClick={() => navigate(`/event/${event.id}`)}
-              className="card card-interactive event-card"
-            >
-              <div className="event-card-header">
-                <h4 className="event-card-title">{event.title}</h4>
-                <span className="badge badge-neutral">{event.category || 'New'}</span>
-              </div>
-              <div className="event-card-footer">
-                <span className="caption">
-                  <CalendarDays size={12} /> {event.date?.seconds ? new Date(event.date.seconds * 1000).toLocaleDateString() : event.date}
-                </span>
-                <span className="caption">
-                  <Users size={12} /> {event.attendees}
-                </span>
-              </div>
-            </motion.div>
-          ))}
-          {events.length === 0 && <p className="caption" style={{ padding: 16 }}>No upcoming events.</p>}
-        </div>
-      )}
+      <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 16, marginBottom: 16, margin: '0 -16px', padding: '0 16px 16px' }}>
+        {trendingEvents.map((e, i) => (
+          <motion.div
+            key={e.id}
+            initial={{ x: 20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.1 + i * 0.05 }}
+            onClick={() => navigate(`/event/${e.id}`)}
+            className="card card-interactive"
+            style={{
+              minWidth: 240, padding: 16, flexShrink: 0,
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 12 }}>
+              <h4 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', flex: 1, lineHeight: 1.3 }}>{e.title}</h4>
+              <span className="badge badge-neutral" style={{ marginLeft: 8 }}>{e.tag}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="caption" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <CalendarDays size={12} /> {e.date}
+              </span>
+              <span className="caption" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Users size={12} /> {e.attendees}
+              </span>
+            </div>
+          </motion.div>
+        ))}
+      </div>
 
       {/* Recent Rides */}
       <div className="section-header">
@@ -135,20 +152,21 @@ export default function Home() {
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.3 + (i * 0.08), ease: [0.16, 1, 0.3, 1] }}
           onClick={() => navigate('/ride-search')}
-          className="card card-interactive recent-ride-card"
+          className="card card-interactive"
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, position: 'relative', zIndex: 1 }}
         >
           <div style={{ flex: 1 }}>
-            <div className="recent-ride-location">
-              <div className="location-dot-start" />
-              <span className="body-sm font-medium">{r.from}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'var(--text-tertiary)' }} />
+              <span className="body-sm" style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{r.from}</span>
             </div>
-            <div className="recent-ride-location">
-              <div className="location-dot-end" />
-              <span className="body-sm font-medium">{r.to}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 8, height: 8, backgroundColor: 'var(--text-primary)' }} />
+              <span className="body-sm" style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{r.to}</span>
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div className="mono price-tag">{r.price}</div>
+            <div className="mono" style={{ fontSize: 16, color: 'var(--text-primary)' }}>{r.price}</div>
             <span className="caption mono">{r.best} · {r.time}</span>
           </div>
           <ChevronRight size={16} color="var(--text-tertiary)" style={{ marginLeft: 12 }} />

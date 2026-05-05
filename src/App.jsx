@@ -2,8 +2,6 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import BottomNav from './components/BottomNav'
-import ProtectedRoute from './components/ProtectedRoute';
-import OnboardingRoute from './components/OnboardingRoute';
 
 // Screens
 import Splash from './screens/Splash'
@@ -24,7 +22,6 @@ import Profile from './screens/Profile'
 import AiPlanner from './screens/AiPlanner'
 import AiPlannerResult from './screens/AiPlannerResult'
 import SmartBook from './screens/SmartBook'
-import Login from './screens/Login'
 
 // Theme Context
 const ThemeContext = createContext()
@@ -51,38 +48,37 @@ function ThemeProvider({ children }) {
   )
 }
 
-const ONBOARDING_ROUTES = ['/', '/welcome', '/interests', '/location', '/login'];
+const ONBOARDING = ['/', '/welcome', '/interests', '/location']
 
 export default function App() {
-  const location = useLocation();
-  const isOnboarding = ONBOARDING_ROUTES.includes(location.pathname);
+  const location = useLocation()
+  const isOnboarding = ONBOARDING.includes(location.pathname)
 
   return (
     <ThemeProvider>
-        <AnimatePresence mode="wait">
-          <Routes location={location} key={location.pathname}>
-            <Route path="/" element={<Splash />} />
-            <Route path="/welcome" element={<Welcome />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/interests" element={<Interests />} />
-            <Route path="/location" element={<LocationPerm />} />
-            <Route path="/home" element={<ProtectedRoute><OnboardingRoute><Home /></OnboardingRoute></ProtectedRoute>} />
-            <Route path="/ride-search" element={<ProtectedRoute><OnboardingRoute><RideSearch /></OnboardingRoute></ProtectedRoute>} />
-            <Route path="/ride-results" element={<ProtectedRoute><OnboardingRoute><RideResults /></OnboardingRoute></ProtectedRoute>} />
-            <Route path="/discover" element={<ProtectedRoute><OnboardingRoute><Discover /></OnboardingRoute></ProtectedRoute>} />
-            <Route path="/events" element={<ProtectedRoute><OnboardingRoute><Events /></OnboardingRoute></ProtectedRoute>} />
-            <Route path="/event/:id" element={<ProtectedRoute><OnboardingRoute><EventDetail /></OnboardingRoute></ProtectedRoute>} />
-            <Route path="/post-event" element={<ProtectedRoute><OnboardingRoute><PostEvent /></OnboardingRoute></ProtectedRoute>} />
-            <Route path="/social" element={<ProtectedRoute><OnboardingRoute><SocialFeed /></OnboardingRoute></ProtectedRoute>} />
-            <Route path="/social-explore" element={<ProtectedRoute><OnboardingRoute><SocialExplore /></OnboardingRoute></ProtectedRoute>} />
-            <Route path="/social-groups" element={<ProtectedRoute><OnboardingRoute><SocialGroups /></OnboardingRoute></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><OnboardingRoute><Profile /></OnboardingRoute></ProtectedRoute>} />
-            <Route path="/ai-planner" element={<ProtectedRoute><OnboardingRoute><AiPlanner /></OnboardingRoute></ProtectedRoute>} />
-            <Route path="/ai-planner-result" element={<ProtectedRoute><OnboardingRoute><AiPlannerResult /></OnboardingRoute></ProtectedRoute>} />
-            <Route path="/smart-book" element={<ProtectedRoute><OnboardingRoute><SmartBook /></OnboardingRoute></ProtectedRoute>} />
-          </Routes>
-        </AnimatePresence>
-        {!isOnboarding && <BottomNav />}
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          <Route path="/" element={<Splash />} />
+          <Route path="/welcome" element={<Welcome />} />
+          <Route path="/interests" element={<Interests />} />
+          <Route path="/location" element={<LocationPerm />} />
+          <Route path="/home" element={<Home />} />
+          <Route path="/ride-search" element={<RideSearch />} />
+          <Route path="/ride-results" element={<RideResults />} />
+          <Route path="/discover" element={<Discover />} />
+          <Route path="/events" element={<Events />} />
+          <Route path="/event/:id" element={<EventDetail />} />
+          <Route path="/post-event" element={<PostEvent />} />
+          <Route path="/social" element={<SocialFeed />} />
+          <Route path="/social-explore" element={<SocialExplore />} />
+          <Route path="/social-groups" element={<SocialGroups />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/ai-planner" element={<AiPlanner />} />
+          <Route path="/ai-planner-result" element={<AiPlannerResult />} />
+          <Route path="/smart-book" element={<SmartBook />} />
+        </Routes>
+      </AnimatePresence>
+      {!isOnboarding && <BottomNav />}
     </ThemeProvider>
   )
 }

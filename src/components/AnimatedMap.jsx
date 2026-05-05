@@ -8,6 +8,9 @@ import { Layers } from 'lucide-react'
 // Maplibre vector style (Dark Matter)
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
 
+// Global Route Cache for instant load
+const routeCache = new Map()
+
 export default function AnimatedMap({ from, to }) {
   const [viewState, setViewState] = useState({
     longitude: (from.lng + to.lng) / 2,
@@ -21,51 +24,56 @@ export default function AnimatedMap({ from, to }) {
   const [carPosition, setCarPosition] = useState([from.lng, from.lat])
   const animationRef = useRef(null)
 
-  // Generate curved route using Turf.js
-  const routeGeoJSON = useMemo(() => {
-    // To make a curve, we find the midpoint and offset it
-    const midPoint = turf.midpoint(
-      turf.point([from.lng, from.lat]), 
-      turf.point([to.lng, to.lat])
-    )
-    
-    const distance = turf.distance(
-      turf.point([from.lng, from.lat]), 
-      turf.point([to.lng, to.lat])
-    )
+  const [routeData, setRouteData] = useState(null)
 
-    // Offset midpoint perpendicularly to create an arc
-    const bearing = turf.bearing(
-      turf.point([from.lng, from.lat]), 
-      turf.point([to.lng, to.lat])
-    )
-    const arcNode = turf.destination(midPoint, distance * 0.2, bearing + 90)
+  // Fetch real route from OSRM (Optimized with Cache)
+  useEffect(() => {
+    const fetchRoute = async () => {
+      const cacheKey = `${from.lng},${from.lat};${to.lng},${to.lat}`
+      if (routeCache.has(cacheKey)) {
+        setRouteData(routeCache.get(cacheKey))
+        return
+      }
 
-    const line = turf.lineString([
-      [from.lng, from.lat],
-      arcNode.geometry.coordinates,
-      [to.lng, to.lat]
-    ])
-
-    // Smooth it into a Bezier curve
-    const curved = turf.bezierSpline(line, { resolution: 10000 })
-    return curved
+      try {
+        const response = await fetch(
+          `https://router.project-osrm.org/route/v1/driving/${cacheKey}?overview=full&geometries=geojson`
+        )
+        const data = await response.json()
+        if (data.routes && data.routes.length > 0) {
+          const geom = data.routes[0].geometry
+          setRouteData(geom)
+          routeCache.set(cacheKey, geom)
+        }
+      } catch (error) {
+        console.warn('OSRM error, using straight line fallback', error)
+        // Fallback to straight line for zero-latency
+        const fallback = {
+          type: 'LineString',
+          coordinates: [[from.lng, from.lat], [to.lng, to.lat]]
+        }
+        setRouteData(fallback)
+      }
+    }
+    fetchRoute()
   }, [from, to])
 
   // Animate Car along route
   useEffect(() => {
-    const totalPoints = routeGeoJSON.geometry.coordinates.length
+    if (!routeData) return
+
+    const totalPoints = routeData.coordinates.length
     let currentPoint = 0
 
     const animate = () => {
-      currentPoint = (currentPoint + 5) % totalPoints // Speed of car
-      setCarPosition(routeGeoJSON.geometry.coordinates[currentPoint])
+      currentPoint = (currentPoint + 2) % totalPoints // Double speed for "Faster" feel
+      setCarPosition(routeData.coordinates[currentPoint])
       animationRef.current = requestAnimationFrame(animate)
     }
     
     animationRef.current = requestAnimationFrame(animate)
     return () => cancelAnimationFrame(animationRef.current)
-  }, [routeGeoJSON])
+  }, [routeData])
 
   const toggle3D = () => {
     setIs3D(!is3D)
@@ -91,37 +99,39 @@ export default function AnimatedMap({ from, to }) {
         dragPan={true}
         scrollZoom={false}
       >
-        {/* Glow Line Route (Kepler.gl style) */}
-        <Source id="route" type="geojson" data={routeGeoJSON}>
-          <Layer
-            id="route-glow-1"
-            type="line"
-            paint={{
-              'line-color': '#A78BFA',
-              'line-width': 12,
-              'line-opacity': 0.15,
-              'line-blur': 8
-            }}
-          />
-          <Layer
-            id="route-glow-2"
-            type="line"
-            paint={{
-              'line-color': '#8B5CF6',
-              'line-width': 6,
-              'line-opacity': 0.4,
-              'line-blur': 4
-            }}
-          />
-          <Layer
-            id="route-line"
-            type="line"
-            paint={{
-              'line-color': '#FFFFFF',
-              'line-width': 2,
-            }}
-          />
-        </Source>
+        {/* Glow Line Route (Real OSRM Route) */}
+        {routeData && (
+          <Source id="route" type="geojson" data={{ type: 'Feature', geometry: routeData }}>
+            <Layer
+              id="route-glow-1"
+              type="line"
+              paint={{
+                'line-color': '#A78BFA',
+                'line-width': 12,
+                'line-opacity': 0.15,
+                'line-blur': 8
+              }}
+            />
+            <Layer
+              id="route-glow-2"
+              type="line"
+              paint={{
+                'line-color': '#8B5CF6',
+                'line-width': 6,
+                'line-opacity': 0.4,
+                'line-blur': 4
+              }}
+            />
+            <Layer
+              id="route-line"
+              type="line"
+              paint={{
+                'line-color': '#FFFFFF',
+                'line-width': 2,
+              }}
+            />
+          </Source>
+        )}
 
         {/* Start Point (Uber-clone Origin Pulse) */}
         <Marker longitude={from.lng} latitude={from.lat} anchor="center">
